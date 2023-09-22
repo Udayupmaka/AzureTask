@@ -1,0 +1,63 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+- name: azureSubscriptionId
+  value: 2c29577a-51e6-42b6-9821-f7405b570913
+- name: resourceGroupName
+  value: my-resource-group-prod
+- name: appName
+  value: my-web-app
+
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: 3.8
+    - task: PublishPipelineArtifact@1
+      inputs:
+        artifactName: drop
+        targetPath: $(System.DefaultWorkingDirectory)
+
+- stage: Deploy
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: Deploy
+    steps:
+    - task: AzureWebApp@1
+      inputs:
+        azureSubscriptionId: $(2c29577a-51e6-42b6-9821-f7405b570913)
+        resourceGroupName: $(my-resource-group-prod)
+        appName: $(my-web-app)
+        package: $(Pipeline.Workspace)/drop/$(Build.BuildId).zip
+
+- stage: Test
+  dependsOn: Deploy
+  condition: succeeded()
+  jobs:
+  - job: Test
+    steps:
+    - task: AzureWebAppTest@1
+      inputs:
+        azureSubscriptionId: $(2c29577a-51e6-42b6-9821-f7405b570913)
+        resourceGroupName: $(my-resource-group-prod)
+        appName: $(my-web-app)
+
+- stage: Monitor
+  dependsOn: Test
+  condition: succeeded()
+  jobs:
+  - job: Monitor
+    steps:
+    - task: AzureWebAppMonitor@1
+      inputs:
+        azureSubscriptionId: $(2c29577a-51e6-42b6-9821-f7405b570913)
+        resourceGroupName: $(my-resource-group-prod)
+        appName: $(my-web-app)
